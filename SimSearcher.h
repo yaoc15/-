@@ -28,15 +28,15 @@ public:
 	int searchJaccard(const char *query, double threshold, std::vector<std::pair<unsigned, double> > &result);
 	int searchED(const char *query, unsigned threshold, std::vector<std::pair<unsigned, unsigned> > &result);
 
-	int createList(char* item, int id);
-	int generateQgrams(const char* word, int word_length, std::vector<char*>& qgrams);
-	int splitWord(const char* line, char c, std::vector<std::string>& words);
-	int insertEDList(char* qgram, int id);
-	int insertJACList(char* item, int id);
-	int createED(char *item, int id);
-	int createJCD(char *item, int id);
+	//int createList(char* item, int id);
+	//int initQgrams(const char* word, int word_length, std::vector<char*>& qgrams);
+	//int splitWord(const char* line, char c, std::vector<std::string>& words);
+	//int insertEDList(char* qgram, int id);
+	//int insertJACList(char* item, int id);
+	//int createED(char *item, int id);
+	//int createJCD(char *item, int id);
 
-	int calED(const char *query, const char* entry, int th);
+	//int calculateED(const char *query, const char* entry, int th);
 
 	int q;
 	void printDebug(std::vector<std::pair<unsigned, unsigned> > &result);

@@ -80,7 +80,7 @@ SimSearcher::~SimSearcher()
 {
 }
 
-int SimSearcher::createList(char* item, int id)
+int createList(char* item, int id)
 {
 	char* new_word = new char[4096];
 	strcpy(new_word,item);
@@ -90,13 +90,13 @@ int SimSearcher::createList(char* item, int id)
 	e.length = (int)strlen(new_word);
 	file_lines.push_back(e);
 	vector<char*> qgrams;
-	generateQgrams(item,e.length,qgrams);
+	initQgrams(item, e.length, qgrams);
 	for(vector<char*>::iterator it = qgrams.begin();it != qgrams.end();++it)
 		insertEDList(*it,id);
 	vector<string> words;
 	splitWord(item,' ',words);
 	word_num.push_back((int)words.size());
-	if (smin >  (int)words.size()) then 
+	if (smin >  (int)words.size())
 		smin = (int)words.size();
 	for(vector<string>::iterator it = words.begin();it != words.end();++it)
 	{
@@ -111,33 +111,30 @@ int SimSearcher::createList(char* item, int id)
 	return SUCCESS;
 }
 
-int SimSearcher::generateQgrams(const char* word, int word_length, vector<char*>& qgrams)
-//produce grams
+int initQgrams(const char* word, int word_length, vector<char*>& qgrams)
 {
 	qgrams.clear();
 	int i = 0;
-	int len = word_length;
-	while(i + q - 1 < len)
+	while(i + q - 1 < word_length)
 	{
-		char* qgram_entry = new char[this->q + 1];
-		for(int j = 0;j < q;j++)
+		char* temp_qgram = new char[this->q + 1];
+		for(int j = 0; j < q; j++)
 		{
-			qgram_entry[j] = word[j + i];
+			temp_qgram[j] = word[j + i];
 		}
-		qgram_entry[q] = '\0';
-		qgrams.push_back(qgram_entry);
+		temp_qgram[q] = '\0';
+		qgrams.push_back(temp_qgram);
 		i++;
 	}
 	return SUCCESS;
 }
 
-int SimSearcher::splitWord(const char* line, char c, vector<string>& words)
-//split line into single words
+int splitWord(const char* line, char c, vector<string>& words)
 {
 	string str = string(line);
 	int len = str.length();
     int start = 0;
-    for(int i = 0;i<len;i++)
+    for(int i = 0; i<len; i++)
     {
         if(str[i] == c)
         {
@@ -152,29 +149,22 @@ int SimSearcher::splitWord(const char* line, char c, vector<string>& words)
     words.push_back(str.substr(start,len-start));
     sort(words.begin(),words.end());
     words.erase(unique(words.begin(),words.end()),words.end());
-    //remove the same word
     return SUCCESS;
 }
 
-int SimSearcher::insertEDList(char* qgram, int id)
-// build inverted list. id begin at the second item
+int insertEDList(char* qgram, int id)
 {
-	int new_index = ed_list.size();
-	Qgram new_qgram;
-	new_qgram.qgram = qgram;
-	new_qgram.index = new_index;
-	set<Qgram>::iterator it = ed_set.find(new_qgram);
+	Qgram temp_q;
+	temp_q.qgram = qgram;
+	temp_q.index = ed_list.size();
+	set<Qgram>::iterator it = ed_set.find(temp_q);
 	if(it == ed_set.end())
-	//do not exist in inverted list
 	{
 		ed_list.push_back(vector<int>());
-		ed_set.insert(new_qgram);
-		//add into set
+		ed_set.insert(temp_q);
 		insertEDList(qgram,id);
-		//re-insert into list
 	}
 	else
-	//exist
 	{
 		int index = it->index;
 		ed_list[index].push_back(id);
@@ -182,17 +172,16 @@ int SimSearcher::insertEDList(char* qgram, int id)
 	return SUCCESS;
 }
 
-int SimSearcher::insertJACList(char* item, int id)
+int insertJACList(char* item, int id)
 {
-	int new_index = jac_list.size();
-	Qgram new_word;
-	new_word.qgram = item;
-	new_word.index = new_index;
-	set<Qgram>::iterator it = jac_set.find(new_word);
+	Qgram temp_q;
+	temp_q.qgram = item;
+	temp_q.index = jac_list.size();
+	set<Qgram>::iterator it = jac_set.find(temp_q);
 	if(it == jac_set.end())
 	{
 		jac_list.push_back(vector<int>());
-		jac_set.insert(new_word);
+		jac_set.insert(temp_q);
 		insertJACList(item,id);
 	}
 	else
@@ -204,12 +193,14 @@ int SimSearcher::insertJACList(char* item, int id)
 }
 
 int SimSearcher::createIndex(const char *filename, unsigned q)
-// create index for further searching
 {
+	for (int i = 0; i < DIS_SIZE; i++)
+		dis[i][0] = i;
+	for (int j = 0; j < DIS_SIZE; j++)
+		dis[0][j] = j;
 	this->q = q;
-	ifstream fin(filename);
 	int id = 0;
-	
+	ifstream fin(filename);	
 	while(!fin.eof())
 	{
 		getline(fin,string_buf);
@@ -219,68 +210,49 @@ int SimSearcher::createIndex(const char *filename, unsigned q)
 		}
 		char* buffer = &string_buf[0];
 		createList(buffer,id);
-		//call createList
 		id++;
-	}
-	
+	}	
 	fin.close();
-
-	for (int i = 0; i < DIS_SIZE; i++)
-		dis[i][0] = i;
-	for (int j = 0; j < DIS_SIZE; j++)
-		dis[0][j] = j;
-
 	return SUCCESS;
 }
 
-int SimSearcher::calED(const char *query, const char* entry, int th)
-//calculate ED between query and entry
+int calculateED(const char *query, const char* entry, int th)
 {
 	const char* t = query;
-	int lent = strlen(t);
+	int t_length = strlen(t);
 	const char* s = entry;
-	int lens = strlen(s);
-	if(abs(lens - lent) > th)
+	int s_length = strlen(s);
+	if(abs(s_length - t_length) > th)
 		return MAX_NUM;
-	if(lens > lent)
-		return calED(entry, query, th);
-		//when lens > lent swap entry and query to reach the complexity O(min(lens,lent)*(2*th+1))
-	
-	for (int i = 1; i <= lens; i++)
+	if(s_length > t_length)
+		return calculateED(entry, query, th);	
+	for (int i = 1; i <= s_length; i++)
 	{
 		int lo = max(1,i-th);
-		int hi = min(lent,i+th);
-		//lower bound and upper bound
+		int hi = min(t_length,i+th);
 		bool flag = true;
 		for (int j = lo; j <= hi; j++)
-		//only calculate possible position using the threshold
 		{
-			int tij = (s[i - 1] == t[j - 1]) ? 0 : 1;
-			
+			int temp = (s[i - 1] == t[j - 1]) ? 0 : 1;
 			if(j == i-th)
 			{
-				dis[i][j] = min(dis[i - 1][j] + 1,
-	            			   dis[i - 1][j - 1] + tij);
+				dis[i][j] = min(dis[i - 1][j] + 1, dis[i - 1][j - 1] + temp);
 			}
 			else if(j == i+th)
 			{
-				dis[i][j] = min(dis[i][j - 1] + 1,
-	            			   dis[i - 1][j - 1] + tij);
+				dis[i][j] = min(dis[i][j - 1] + 1, dis[i - 1][j - 1] + temp);
 			}
 			else
 			{
-				dis[i][j] = getMin(dis[i - 1][j] + 1,
-	            			   dis[i][j - 1] + 1,
-	            			   dis[i - 1][j - 1] + tij);
+				dis[i][j] = getMin(dis[i - 1][j] + 1, dis[i][j - 1] + 1, dis[i - 1][j - 1] + temp);
 			}
 			if(dis[i][j] <= th)
 				flag = false;
 		}
 		if(flag)
 			return MAX_NUM;
-		//early termination
 	}
-	return dis[lens][lent];
+	return dis[s_length][t_length];
 }
 
 int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<unsigned, double> > &result)
@@ -288,29 +260,24 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
 	result.clear();
     vector<string> str_words;
     splitWord(query,' ',str_words);
-    //split query into words
 
     vector<char*> words;
-    for(vector<string>::iterator it = str_words.begin();it != str_words.end();it++)
+    for(vector<string>::iterator it = str_words.begin(); it != str_words.end(); it++)
     {
-		char* tmp = new char[it->length() + 10];
-		for(unsigned j = 0;j < it->length();j++)
+		char* temp_c = new char[it->length() + 10];
+		for(unsigned j = 0; j < it->length(); j++)
 		{
-			tmp[j] = (*it)[j];
+			temp_c[j] = (*it)[j];
 		}
-		tmp[it->length()] = '\0';
-		words.push_back(tmp);
+		temp_c[it->length()] = '\0';
+		words.push_back(temp_c);
     }
-    //translation into char*
-
     vector<int> candidate;
     int word_size = words.size();
-    int T = max(threshold*word_size,(smin+word_size)*threshold/(threshold+1));
-    //threshold to choosing candidate
-    scanCount(jac_list,jac_set,words,T,candidate);
+    int T = max(threshold*word_size, (smin+word_size)*threshold/(threshold+1));
+    scanCount(jac_list, jac_set, words, T, candidate);
     sort(candidate.begin(),candidate.end());
     if(T > 0)
-    //valid threshold , scan candidate
     {
         unsigned size = candidate.size();
         for(unsigned i = 0;i < size;i++)
@@ -323,7 +290,6 @@ int SimSearcher::searchJaccard(const char *query, double threshold, vector<pair<
         }
     }
     else
-    //else scan all lines
     {
         for(unsigned i = 0;i < file_lines.size();i++)
         {
@@ -342,13 +308,12 @@ int SimSearcher::searchED(const char *query, unsigned threshold, vector<pair<uns
 	result.clear();
 	vector<char*> query_words;
 	int len = strlen(query);
-	int th = len - q + 1 - q * threshold;
-	for(vector<Line>::iterator it = file_lines.begin();it != file_lines.end();++it)
+	for(vector<Line>::iterator it = file_lines.begin(); it != file_lines.end(); ++it)
 	{
 		char* candidate_word = it->word;
 		if(abs(it->length - len) > threshold)
 			continue;
-		int ed = calED(query,candidate_word,threshold);
+		int ed = calculateED(query,candidate_word,threshold);
 		if(ed <= (int)threshold)
 		{
 			result.push_back(make_pair(it->id,ed));
